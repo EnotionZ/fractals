@@ -8,8 +8,8 @@ var radius = 10,
         var delta = 0;
 		if(!e) e = window.event;
 		
-        if (event.wheelDelta) { /* IE/Opera. */
-                delta = event.wheelDelta/120;
+        if (e.wheelDelta) { /* IE/Opera. */
+                delta = e.wheelDelta/120;
                 if (window.opera)
                         delta = -delta;
         } else if (e.detail) { /** Mozilla case. */
@@ -86,8 +86,8 @@ var radius = 10,
 	};
 
 ag.prototype = {
-	WIDTH : 500,
-	HEIGHT : 500,
+	WIDTH : 600,
+	HEIGHT : 600,
 	
 	drawGrid: function(){
 		ctx.beginPath();
@@ -127,6 +127,5 @@ ag.prototype = {
 }
 
 canvas.addEventListener('mousemove', function(e){ mouseMove(e); }, false);
-
 canvas.addEventListener('DOMMouseScroll', wheelCatch, false);
 window.onmousewheel = document.onmousewheel = wheelCatch;
