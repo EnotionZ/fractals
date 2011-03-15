@@ -56,4 +56,5 @@ st.prototype = {
 	}
 
 };
-canvas.addEventListener('mousemove', function(e){ mouseMove(e); }, false);
+document.addEventListener('mousemove', function(e){ mouseMove(e); }, false);
+st.prototype.drawTriangle(0,st.prototype.HEIGHT,st.prototype.WIDTH, true);
