@@ -9,8 +9,8 @@
 			var x = e.clientX - canvas.offsetLeft,
 				y = e.clientY - canvas.offsetTop,
 				x = Math.abs(screenToX(x));
-			
-			
+
+			ctx.clearRect ( 0 , 0 , width , height );
 			drawFirstTriangle();
 			draw(x,height/2, 0, width/2, 0);
 		},
@@ -54,7 +54,7 @@
 		};
 
 	canvas.setAttribute('width', width);
-	canvas.setAttribute('height', height);
+	canvas.setAttribute('height', parseInt(height+1, 10));
 
 	document.addEventListener('mousemove', function(e){ mouseMove(e); }, false);
 	
