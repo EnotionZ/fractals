@@ -6,29 +6,10 @@
 	r0 = -300,		// Radius of outer soddy circle, neg bc it's outer, for the sake of formula
 	canvas = document.getElementById('ag'),
 	ctx = canvas.getContext('2d'),
-	
-	
-	drawGrid = function(){
-		ctx.beginPath();
-		ctx.moveTo(WIDTH/2, 0);
-		ctx.lineTo(WIDTH/2, HEIGHT);
-		ctx.moveTo(0, HEIGHT/2);
-		ctx.lineTo(WIDTH, HEIGHT/2);
-		ctx.stroke();
-		ctx.closePath();
-	},
+	mx, my,
 
-	browserToGraph = function(coord) {
-		coord.x -= WIDTH/2;
-		coord.y = HEIGHT/2 - coord.y;
-		return coord;
-	},
-
-	graphToBrowser = function(coord) {
-		coord.x += WIDTH/2;
-		coord.y = HEIGHT/2 - coord.y;
-		return coord;
-	},
+	browserToGraph = function(coord) { return { x: coord.x-WIDTH/2, y: HEIGHT/2-coord.y }; },
+	graphToBrowser = function(coord) { return { x: coord.x + WIDTH/2, y: HEIGHT/2 - coord.y }; },
 
 	drawCurvature = function(c){
 		var coord = graphToBrowser({x: c.x, y: c.y});
@@ -41,8 +22,10 @@
 	},
 	
 	// gets x and y of soddy given c1, c2, and r
-	getPoint = function(c1, c2, r) {
+	getPoint = function(c1, c2, r, lvl) {
 		var
+		
+		x, y, hyp, theta,
 		
 		a = c1.r+c2.r,
 		b = c1.r+r,
@@ -50,82 +33,109 @@
 		
 		A = Math.acos((Math.pow(b,2) + Math.pow(c,2) - Math.pow(a,2))/(2*b*c)),
 		B = Math.acos((Math.pow(a,2) + Math.pow(c,2) - Math.pow(b,2))/(2*a*c)),
-		C = Math.acos((Math.pow(a,2) + Math.pow(b,2) - Math.pow(c,2))/(2*a*b)),
+		C = Math.acos((Math.pow(a,2) + Math.pow(b,2) - Math.pow(c,2))/(2*a*b));
 		
-		x = b*Math.sin(C),
-		y = -Math.sqrt(Math.pow(b,2) - Math.pow(x-c1.x, 2)) + c1.y;
+		
+		opp = c1.y-c2.y,
+		adj = c1.x-c2.x;
+		
+		if(opp===0 || adj===0) {
+			// if both points are on axis
+			x = b*Math.sin(C),
+			y = -Math.sqrt(Math.pow(b,2) - Math.pow(x-c1.x, 2)) + c1.y;	
+		} else {
+			hyp = Math.sqrt(Math.pow(opp,2) + Math.pow(adj,2));
+			theta = Math.acos((Math.pow(hyp,2) + Math.pow(adj,2) - Math.pow(opp,2))/(2*hyp*adj));
+
+
+			if(c2.x<0) {
+				// left half
+				theta = -B - theta;
+				
+				x = c2.x + (adj < 0 ? c*Math.cos(theta) : -c*Math.cos(theta));
+				y = c2.y + (opp < 0 ? -c*Math.sin(theta) : c*Math.sin(theta));
+				x = c2.x + c*Math.cos(theta);
+				y = c2.y - c*Math.sin(theta);
+			} else {
+				// right half
+				theta =  B - theta;
+				//if(lvl == 2 && opp < 0) theta = theta - 2*B;
+				
+				x = c2.x - (adj < 0 ? c*Math.cos(theta) : -c*Math.cos(theta));
+				y = c2.y + (opp < 0 ? -c*Math.sin(theta) : c*Math.sin(theta));
+				x = c2.x + c*Math.cos(theta);
+				y = c2.y + c*Math.sin(theta);
+			}
+
+		}
 		
 		return { x : x, y : y }
 	},
 	
-	// returns the two soddy curvatures
-	getEdgeSoddy = function(c1, c2) {
+	getSoddyEdge = function(c1, c2, lvl) {
 		var 
-		
+
 		numerator = c1.r*c2.r*r0,
 		denom1 = c2.r*r0 + c1.r*c2.r + c1.r*r0,
 		denom2 = 2*Math.sqrt(c1.r*c2.r*r0*(c1.r+c2.r+r0)),
-		
-		edgeC1 = { r: numerator/(denom1+denom2) },
-		edgeC2 = { r: numerator/(denom1-denom2) },
-	
-		point1 = getPoint(c1, c2, edgeC1.r),
-		point2 = getPoint(c1, c2, edgeC2.r);
 
-		edgeC1.x = -point1.x;
-		edgeC1.y = point1.y;
-		edgeC2.x = point2.x;
-		edgeC2.y = point2.y;
-		
-		return [edgeC1, edgeC2];
+		edgeC = { r: numerator/(denom1-denom2) },
+		point = getPoint(c1, c2, edgeC.r, lvl);
+
+		edgeC.x = point.x;
+		edgeC.y = point.y;
+
+		return edgeC;
 	},
 	
-	ag = function(x, y, lvl){
+	drawSetup = function(x, y) {
+		var
+		c1 = { r: (300 - y)/2, x: 0, y: HEIGHT/2 - (300 - y)/2 },
+		c2 = { r: (300 + y)/2, x: 0, y: -c1.r },
+		edgeCR = getSoddyEdge(c1, c2),
+		edgeCL = { r: edgeCR.r, x: -edgeCR.x, y: edgeCR.y };
 
-		// big circle
+
 		ctx.clearRect ( 0 , 0 , WIDTH , HEIGHT);
-		drawCurvature({x: 0, y: 0, r: WIDTH/2});
-		
-		
-		var c1 = {
-				r: (300 - y)/2,
-				x: 0,
-				y: HEIGHT/2 - (300 - y)/2
-			},
-			c2 = {
-				r: (300 + y)/2,
-				x: 0,
-				y: -c1.r
-			};
-
+	
+		drawCurvature({x: 0, y: 0, r: WIDTH/2}); // outer soddy circle
 		drawCurvature(c1); // top soddy circle
 		drawCurvature(c2); // bot soddy circle
+	
+		drawCurvature(edgeCL); // left soddy circle
+		drawCurvature(edgeCR); // right soddy circle
 		
-		
-		
-		var edgeSoddy = getEdgeSoddy(c1, c2);
-		drawCurvature(edgeSoddy[0]);
-		drawCurvature(edgeSoddy[1]);
-		
-		
-		
-		drawGrid();
-		return false;
+		return { cTop: c1, cBottom: c2, cLeft: edgeCL, cRight: edgeCR };
 	},
 	
-	mouseMove = function(e) {
-		var x = e.clientX - 38,
-		y = e.clientY - 38,
-		c = browserToGraph({x:x,y:y});
-		x = c.x;
-		y = c.y;
-
-		//don't show anything outside of the circle
-		if(Math.pow(x,2) + Math.pow(y,2)  < Math.pow(WIDTH/2 ,2))
-			ag(x,y);
+	ag = function(c1, c2, c3, lvl){
+		lvl++;
+		
+		if(lvl === 8) return;
+		if(c3 === 'edge') {
+			var c = getSoddyEdge(c1, c2, lvl)
+			drawCurvature(c);
+			ag(c1,c,'edge',lvl);
+			ag(c,c2,'edge',lvl);
+		}
+		return false;
 	};
 
 
-	canvas.addEventListener('mousemove', function(e){ mouseMove(e); }, false);
+	canvas.addEventListener('mousemove', function(e){
+		var s, c = browserToGraph({x:e.clientX - 38,y:e.clientY - 38});
+
+		mx = c.x;
+		my = c.y;
+
+		//don't show anything outside of the circle
+		if(Math.pow(mx,2) + Math.pow(my,2)  < Math.pow(WIDTH/2 ,2)) {
+			s = drawSetup(mx,my);
+			ag(s.cTop, s.cLeft, 'edge', 0);
+			ag(s.cTop, s.cRight, 'edge', 0);
+			ag(s.cBottom, s.cLeft, 'edge', 0);
+			ag(s.cBottom, s.cRight, 'edge', 0);
+		}
+	}, false);
 
 }();
