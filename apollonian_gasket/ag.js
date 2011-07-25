@@ -1,131 +1,131 @@
-var radius = 10,
+!function(){
+	var
+	
+	WIDTH = 600,
+	HEIGHT = 600,
+	r0 = -300,		// Radius of outer soddy circle, neg bc it's outer, for the sake of formula
 	canvas = document.getElementById('ag'),
 	ctx = canvas.getContext('2d'),
 	
 	
+	drawGrid = function(){
+		ctx.beginPath();
+		ctx.moveTo(WIDTH/2, 0);
+		ctx.lineTo(WIDTH/2, HEIGHT);
+		ctx.moveTo(0, HEIGHT/2);
+		ctx.lineTo(WIDTH, HEIGHT/2);
+		ctx.stroke();
+		ctx.closePath();
+	},
+
+	browserToGraph = function(coord) {
+		coord.x -= WIDTH/2;
+		coord.y = HEIGHT/2 - coord.y;
+		return coord;
+	},
+
+	graphToBrowser = function(coord) {
+		coord.x += WIDTH/2;
+		coord.y = HEIGHT/2 - coord.y;
+		return coord;
+	},
+
+	drawCurvature = function(c){
+		var coord = graphToBrowser({x: c.x, y: c.y});
+
+		ctx.beginPath();
+		ctx.lineWidth = 1;
+		ctx.arc(coord.x, coord.y, c.r, 0, Math.PI*2, false);
+		ctx.stroke();
+		ctx.closePath();
+	},
 	
-	wheelCatch = function(e) {
-        var delta = 0;
-		if(!e) e = window.event;
+	// gets x and y of soddy given c1, c2, and r
+	getPoint = function(c1, c2, r) {
+		var
 		
-        if (e.wheelDelta) { /* IE/Opera. */
-                delta = e.wheelDelta/120;
-                if (window.opera)
-                        delta = -delta;
-        } else if (e.detail) { /** Mozilla case. */
-                /** In Mozilla, sign of delta is different than in IE.
-                 * Also, delta is multiple of 3. */
-                delta = -e.detail/3;
-        }
-        /** If delta is nonzero, handle it.
-         * Basically, delta is now positive if wheel was scrolled up,
-         * and negative, if wheel was scrolled down.
-         */
-        if (delta) mouseScroll(delta, e);
-        /** Pre default actions caused by mouse wheel.
-         * That might be ugly, but we handle scrolls somehow
-         * anyway, so don't bother here..
-         */
-        if (e.preDefault) e.preDefault();
-		e.returnValue = false;	
-	},
-	mouseScroll = function(delta, e) {
-		if( radius < 3 && delta < 0 || radius > ag.prototype.WIDTH/2 - 40 && delta > 0) return;
-		if(delta < 0) radius--;
-		else radius++;
+		a = c1.r+c2.r,
+		b = c1.r+r,
+		c = c2.r+r,
 		
-		mouseMove(e);
+		A = Math.acos((Math.pow(b,2) + Math.pow(c,2) - Math.pow(a,2))/(2*b*c)),
+		B = Math.acos((Math.pow(a,2) + Math.pow(c,2) - Math.pow(b,2))/(2*a*c)),
+		C = Math.acos((Math.pow(a,2) + Math.pow(b,2) - Math.pow(c,2))/(2*a*b)),
+		
+		x = b*Math.sin(C),
+		y = -Math.sqrt(Math.pow(b,2) - Math.pow(x-c1.x, 2)) + c1.y;
+		
+		return { x : x, y : y }
 	},
+	
+	// returns the two soddy curvatures
+	getEdgeSoddy = function(c1, c2) {
+		var 
+		
+		numerator = c1.r*c2.r*r0,
+		denom1 = c2.r*r0 + c1.r*c2.r + c1.r*r0,
+		denom2 = 2*Math.sqrt(c1.r*c2.r*r0*(c1.r+c2.r+r0)),
+		
+		edgeC1 = { r: numerator/(denom1+denom2) },
+		edgeC2 = { r: numerator/(denom1-denom2) },
+	
+		point1 = getPoint(c1, c2, edgeC1.r),
+		point2 = getPoint(c1, c2, edgeC2.r);
+
+		edgeC1.x = -point1.x;
+		edgeC1.y = point1.y;
+		edgeC2.x = point2.x;
+		edgeC2.y = point2.y;
+		
+		return [edgeC1, edgeC2];
+	},
+	
+	ag = function(x, y, lvl){
+
+		// big circle
+		ctx.clearRect ( 0 , 0 , WIDTH , HEIGHT);
+		drawCurvature({x: 0, y: 0, r: WIDTH/2});
+		
+		
+		var c1 = {
+				r: (300 - y)/2,
+				x: 0,
+				y: HEIGHT/2 - (300 - y)/2
+			},
+			c2 = {
+				r: (300 + y)/2,
+				x: 0,
+				y: -c1.r
+			};
+
+		drawCurvature(c1); // top soddy circle
+		drawCurvature(c2); // bot soddy circle
+		
+		
+		
+		var edgeSoddy = getEdgeSoddy(c1, c2);
+		drawCurvature(edgeSoddy[0]);
+		drawCurvature(edgeSoddy[1]);
+		
+		
+		
+		drawGrid();
+		return false;
+	},
+	
 	mouseMove = function(e) {
 		var x = e.clientX - 38,
 		y = e.clientY - 38,
-		c = ag.prototype.browserToGraph({x:x,y:y});
+		c = browserToGraph({x:x,y:y});
 		x = c.x;
 		y = c.y;
 
 		//don't show anything outside of the circle
-		if(Math.pow(x,2) + Math.pow(y,2)  < Math.pow(ag.prototype.WIDTH/2 - radius,2))
-			new ag(x,y);
-	},
-	
-	
-	
-	ag = function(x, y){
-		
-		var bigR = this.WIDTH/2,
-			r = radius,
-			x = x || 0,
-			y = y || 0;
-		
-		x = (x==0 ? 1 : x);
-		y = (y==0 ? 1 : y);
-		
-		// big circle
-		this.drawCircle(0,0,bigR, true);
-		
-		try {
-			// first inner soddy circle
-			this.drawCircle(x,y,r);
-			//console.log(x + '|' + y);
-			
-			// top circle
-			var h = Math.sqrt(Math.pow(x,2) + Math.pow(y,2)),
-				newR = (bigR-(h + r))/2,
-				newH = h + r + newR,
-				theta = Math.atan(y/x),
-				newX = newH*Math.cos(theta) * ( x<0 ? -1 : 1),
-				newY = newH*Math.sin( theta) * (x<0 ? -1 : 1);
-			this.drawCircle(newX,newY,newR);
-			
-		} catch(e) {
-		
-		}
-		
-		this.drawGrid();
-		return false;
+		if(Math.pow(x,2) + Math.pow(y,2)  < Math.pow(WIDTH/2 ,2))
+			ag(x,y);
 	};
 
-ag.prototype = {
-	WIDTH : 600,
-	HEIGHT : 600,
-	
-	drawGrid: function(){
-		ctx.beginPath();
-		ctx.moveTo(this.WIDTH/2, 0);
-		ctx.lineTo(this.WIDTH/2, this.HEIGHT);
-		ctx.moveTo(0, this.HEIGHT/2);
-		ctx.lineTo(this.WIDTH, this.HEIGHT/2);
-		ctx.stroke();
-		ctx.closePath();
-	},
-	
-	browserToGraph: function(coord) {
-		coord.x -= this.WIDTH/2;
-		coord.y = this.HEIGHT/2 - coord.y;
-		return coord;
-	},
-	
-	graphToBrowser: function(coord) {
-		coord.x += this.WIDTH/2;
-		coord.y = this.HEIGHT/2 - coord.y;
-		return coord;
-	},
-	
-	drawCircle : function(x, y, r, fill){
-		ctx.beginPath();
-		if(fill) ctx.fillStyle = "white";
-		ctx.lineWidth = 2;
-		var coord = this.graphToBrowser({x: x, y: y});
-		
-		// arc(x, y, radius, startAngle, endAngle, anticlockwise)
-		ctx.arc(coord.x, coord.y, r, 0, Math.PI*2, false);
-		ctx.stroke();
-		ctx.fill();
-		ctx.closePath();
-	}
-	
-}
 
-canvas.addEventListener('mousemove', function(e){ mouseMove(e); }, false);
-canvas.addEventListener('DOMMouseScroll', wheelCatch, false);
-window.onmousewheel = document.onmousewheel = wheelCatch;
+	canvas.addEventListener('mousemove', function(e){ mouseMove(e); }, false);
+
+}();
