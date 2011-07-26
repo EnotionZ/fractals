@@ -3,7 +3,9 @@
 	
 	WIDTH = 600,
 	HEIGHT = 600,
+	LEVEL = 8,
 	r0 = -300,		// Radius of outer soddy circle, neg bc it's outer, for the sake of formula
+	c0 = {x: 0, y: 0, r: -300},
 	canvas = document.getElementById('ag'),
 	ctx = canvas.getContext('2d'),
 	mx, my,
@@ -20,8 +22,7 @@
 		ctx.stroke();
 		ctx.closePath();
 	},
-	
-	// gets x and y of soddy given c1, c2, and r
+
 	getPoint = function(c1, c2, r, q, lvl) {
 		var
 		
@@ -53,7 +54,7 @@
 				x = c2.x + c*Math.cos(theta);
 				y = c2.y - c*Math.sin(theta);
 			} else {
-				theta = (q==='tl' || q==='tr' ? -B : B) + (opp<0 ? - tc12 : tc12);
+				theta = (q==='tl' || q==='tr' || q==='l' ? -B : B) + (opp<0 ? - tc12 : tc12);
 				x = c2.x + c*Math.cos(theta);
 				y = c2.y + c*Math.sin(theta);
 			}
@@ -63,14 +64,14 @@
 		return { x : x, y : y }
 	},
 	
-	getSoddyEdge = function(c1, c2, q, lvl) {
+	getSoddyCircle = function(c1, c2, c3, q, lvl) {
 		var 
 
-		numerator = c1.r*c2.r*r0,
-		denom1 = c2.r*r0 + c1.r*c2.r + c1.r*r0,
-		denom2 = 2*Math.sqrt(c1.r*c2.r*r0*(c1.r+c2.r+r0)),
+		numerator = c1.r*c2.r*c3.r,
+		denom1 = c2.r*c3.r + c1.r*c2.r + c1.r*c3.r,
+		denom2 = 2*Math.sqrt(c1.r*c2.r*c3.r*(c1.r+c2.r+c3.r)),
 
-		edgeC = { r: numerator/(denom1-denom2) },
+		edgeC = { r: numerator/(denom1 + (c3.r <0 ? -denom2 : denom2)) },
 		point = getPoint(c1, c2, edgeC.r, q, lvl);
 
 		edgeC.x = point.x;
@@ -83,7 +84,7 @@
 		var
 		c1 = { r: (300 - y)/2, x: 0, y: HEIGHT/2 - (300 - y)/2 },
 		c2 = { r: (300 + y)/2, x: 0, y: -c1.r },
-		edgeCR = getSoddyEdge(c1, c2),
+		edgeCR = getSoddyCircle(c1, c2, c0),
 		edgeCL = { r: edgeCR.r, x: -edgeCR.x, y: edgeCR.y };
 
 
@@ -102,12 +103,26 @@
 	ag = function(c1, c2, c3, q, lvl){
 		lvl++;
 		
-		if(lvl === 7) return;
+		if(lvl === LEVEL) return;
 		if(c3 === 'edge') {
-			var c = getSoddyEdge(c1, c2, q, lvl)
+			var c = getSoddyCircle(c1, c2, c0, q, lvl)
 			drawCurvature(c);
 			ag(c1,c,'edge', q, lvl);
 			ag(c,c2,'edge', q, lvl);
+
+			if(c.r < 0) return;
+
+			ag(c1, c2, c, q, lvl);
+		} else {
+
+			var c = getSoddyCircle(c1, c2, c3, q, lvl)
+
+			if(c.r < 0) return;
+
+			drawCurvature(c);
+			ag(c1, c2, c, q, lvl);
+			ag(c2, c3, c, q, lvl);
+			ag(c1, c, c3, q, lvl);
 		}
 		return false;
 	};
@@ -119,13 +134,19 @@
 		mx = c.x;
 		my = c.y;
 
+		if(mx===0) mx = .00001;
+		if(my===0) my = .00001;
+
 		//don't show anything outside of the circle
 		if(Math.pow(mx,2) + Math.pow(my,2)  < Math.pow(WIDTH/2 ,2)) {
 			s = drawSetup(mx,my);
-			ag(s.cTop, s.cLeft, 'edge', 'tl', 0);
-			ag(s.cTop, s.cRight, 'edge', 'tr', 0);
-			ag(s.cBottom, s.cLeft, 'edge', 'bl', 0);
-			ag(s.cBottom, s.cRight, 'edge', 'br', 0);
+			ag(s.cTop, s.cLeft, 'edge', 'tl', 1);
+			ag(s.cTop, s.cRight, 'edge', 'tr', 1);
+			ag(s.cBottom, s.cLeft, 'edge', 'bl', 1);
+			ag(s.cBottom, s.cRight, 'edge', 'br', 1);
+
+			ag(s.cTop, s.cBottom, s.cRight, 'tr', 3);
+			ag(s.cTop, s.cLeft, s.cBottom, 'l', 3);
 		}
 	}, false);
 
