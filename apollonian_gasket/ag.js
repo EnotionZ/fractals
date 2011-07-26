@@ -112,17 +112,18 @@
 
 			if(c.r < 0) return;
 
-			ag(c1, c2, c, q, lvl);
+			if(lvl < LEVEL-1) ag(c1, c2, c, q, lvl);
 		} else {
+			if(lvl < LEVEL-1) {
+				var c = getSoddyCircle(c1, c2, c3, q, lvl)
 
-			var c = getSoddyCircle(c1, c2, c3, q, lvl)
+				if(c.r < 0) return;
 
-			if(c.r < 0) return;
-
-			drawCurvature(c);
-			ag(c1, c2, c, q, lvl);
-			ag(c2, c3, c, q, lvl);
-			ag(c1, c, c3, q, lvl);
+				drawCurvature(c);
+				ag(c1, c2, c, q, lvl);
+				ag(c2, c3, c, q, lvl);
+				ag(c1, c, c3, q, lvl);
+			}
 		}
 		return false;
 	};
@@ -145,8 +146,8 @@
 			ag(s.cBottom, s.cLeft, 'edge', 'bl', 1);
 			ag(s.cBottom, s.cRight, 'edge', 'br', 1);
 
-			ag(s.cTop, s.cBottom, s.cRight, 'tr', 3);
-			ag(s.cTop, s.cLeft, s.cBottom, 'l', 3);
+			ag(s.cTop, s.cBottom, s.cRight, 'tr', 1);
+			ag(s.cTop, s.cLeft, s.cBottom, 'l', 1);
 		}
 	}, false);
 
